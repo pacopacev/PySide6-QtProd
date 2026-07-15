@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — AI анализ на данни</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#F4F6F0;
+    --paper-raised:#EFF2EA;
+    --ink:#16241C;
+    --ink-soft:#4A5A4E;
+    --hairline:#C7CFC2;
+    --green:#2F6F4E;
+    --green-dark:#1E4A33;
+    --red:#B23B3B;
+    --gold:#B08B1F;
+    --gold-bg:#F3EBD2;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:2.5rem 1.5rem 4rem;
+  }
+  header.cover{
+    border-bottom:2px solid var(--ink);
+    padding-bottom:1.2rem;
+    margin-bottom:2rem;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:0.75rem;
+  }
+  header.cover .title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:2.1rem;
+    letter-spacing:-0.01em;
+  }
+  header.cover .subtitle{
+    font-size:0.85rem;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .dropzone{
+    border:1.5px dashed var(--hairline);
+    border-radius:4px;
+    padding:3rem 1.5rem;
+    text-align:center;
+    background:var(--paper-raised);
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone:hover, .dropzone.drag{
+    border-color:var(--green);
+    background:#E9EFE4;
+  }
+  .dropzone .big{
+    font-family:'Fraunces', serif;
+    font-size:1.2rem;
+    margin-bottom:0.4rem;
+  }
+  .dropzone .small{
+    font-size:0.85rem;
+    color:var(--ink-soft);
+  }
+  input[type=file]{display:none;}
+  #app{display:none;}
+  .layout{
+    display:grid;
+    grid-template-columns:1.6fr 1fr;
+    gap:2rem;
+    align-items:start;
+  }
+  @media (max-width:860px){
+    .layout{grid-template-columns:1fr;}
+  }
+  .filebar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.8rem;
+    color:var(--ink-soft);
+    margin-bottom:1.25rem;
+    border-bottom:1px solid var(--hairline);
+    padding-bottom:0.6rem;
+  }
+  .filebar button{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.78rem;
+    background:none;
+    border:1px solid var(--hairline);
+    border-radius:3px;
+    padding:0.3rem 0.7rem;
+    cursor:pointer;
+    color:var(--ink);
+  }
+  .filebar button:hover{border-color:var(--ink);}
+  .stats-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(140px,1fr));
+    gap:1px;
+    background:var(--hairline);
+    border:1px solid var(--hairline);
+    margin-bottom:1.75rem;
+  }
+  .stat{
+    background:var(--paper);
+    padding:0.9rem 1rem;
+  }
+  .stat .label{
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-soft);
+    margin-bottom:0.3rem;
+  }
+  .stat .value{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:1.25rem;
+    font-weight:500;
+  }
+  section.block{margin-bottom:2rem;}
+  h2.block-title{
+    font-family:'Fraunces', serif;
+    font-size:1.05rem;
+    font-weight:600;
+    margin:0 0 0.75rem;
+    display:flex;
+    align-items:baseline;
+    gap:0.5rem;
+  }
+  h2.block-title .num{
+    color:var(--gold);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.85rem;
+  }
+  table.ledger{
+    width:100%;
+    border-collapse:collapse;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.8rem;
+  }
+  table.ledger th{
+    text-align:left;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    color:var(--ink-soft);
+    border-bottom:1.5px solid var(--ink);
+    padding:0.45rem 0.6rem;
+    white-space:nowrap;
+  }
+  table.ledger td{
+    padding:0.4rem 0.6rem;
+    border-bottom:1px solid var(--hairline);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:180px;
+  }
+  table.ledger tr:hover td{background:var(--paper-raised);}
+  .table-scroll{overflow-x:auto; border:1px solid var(--hairline);}
+  .chart-controls{
+    display:flex;
+    gap:1rem;
+    flex-wrap:wrap;
+    margin-bottom:0.9rem;
+    font-size:0.8rem;
+  }
+  .chart-controls label{
+    display:flex;
+    flex-direction:column;
+    gap:0.25rem;
+    color:var(--ink-soft);
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  select{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.85rem;
+    padding:0.35rem 0.5rem;
+    border:1px solid var(--hairline);
+    border-radius:3px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .chart-box{
+    border:1px solid var(--hairline);
+    background:var(--paper-raised);
+    padding:1rem;
+    height:280px;
+  }
+  /* margin / annotations panel */
+  .margin-panel{
+    border-left:2px solid var(--ink);
+    padding-left:1.5rem;
+  }
+  .margin-panel h2.block-title{color:var(--green-dark);}
+  .note{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-size:0.92rem;
+    line-height:1.55;
+    color:var(--green-dark);
+    padding:0.6rem 0.75rem;
+    background:var(--paper-raised);
+    border-left:2px solid var(--green);
+    margin-bottom:0.6rem;
+    border-radius:0 3px 3px 0;
+  }
+  .note.pending{color:var(--ink-soft); font-style:normal; font-family:'IBM Plex Mono', monospace; font-size:0.78rem;}
+  .qa{
+    margin-bottom:0.9rem;
+    padding-bottom:0.9rem;
+    border-bottom:1px dashed var(--hairline);
+  }
+  .qa:last-child{border-bottom:none;}
+  .qa .q{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.75rem;
+    color:var(--gold);
+    margin-bottom:0.35rem;
+  }
+  .qa .q::before{content:"В> ";}
+  .chat-form{
+    display:flex;
+    gap:0.5rem;
+    margin-top:1rem;
+    position:sticky;
+    bottom:1rem;
+  }
+  .chat-form input{
+    flex:1;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.85rem;
+    padding:0.55rem 0.7rem;
+    border:1px solid var(--hairline);
+    border-radius:3px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .chat-form input:focus{outline:none; border-color:var(--green);}
+  .chat-form button{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.85rem;
+    font-weight:500;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    border-radius:3px;
+    padding:0 1rem;
+    cursor:pointer;
+  }
+  .chat-form button:disabled{opacity:0.4; cursor:default;}
+  .error{
+    color:var(--red);
+    font-size:0.85rem;
+    margin-top:0.6rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="cover">
+    <div>
+      <div class="title">Ledger</div>
+      <div class="subtitle">AI анализ на таблични данни · CSV / XLSX</div>
+    </div>
+  </header>
+
+  <div id="dropzone" class="dropzone">
+    <div class="big">Пусни файл тук или кликни, за да качиш</div>
+    <div class="small">Поддържа .csv, .xlsx, .xls</div>
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+  </div>
+
+  <div id="app">
+    <div class="filebar">
+      <span id="fileMeta"></span>
+      <button id="resetBtn">Качи друг файл</button>
+    </div>
+
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="layout">
+      <div>
+        <section class="block">
+          <h2 class="block-title"><span class="num">01</span> Преглед на данните</h2>
+          <div class="table-scroll">
+            <table class="ledger" id="previewTable"></table>
+          </div>
+        </section>
+
+        <section class="block">
+          <h2 class="block-title"><span class="num">02</span> Графика</h2>
+          <div class="chart-controls">
+            <label>Числова колона
+              <select id="metricSelect"></select>
+            </label>
+            <label>Групиране по
+              <select id="groupSelect"></select>
+            </label>
+          </div>
+          <div class="chart-box"><canvas id="chartCanvas"></canvas></div>
+        </section>
+      </div>
+
+      <div class="margin-panel">
+        <h2 class="block-title"><span class="num">03</span> Бележки на анализатора</h2>
+        <div id="insights"></div>
+
+        <h2 class="block-title" style="margin-top:1.5rem;"><span class="num">04</span> Питай за данните</h2>
+        <div id="chatLog"></div>
+        <div id="chatError" class="error"></div>
+        <form class="chat-form" id="chatForm">
+          <input type="text" id="chatInput" placeholder="напр. Кой месец имаше най-високи продажби?" autocomplete="off">
+          <button type="submit" id="chatSend">Питай</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let rows = [];
+let columns = [];
+let chatHistory = [];
+let chartInstance = null;
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const app = document.getElementById('app');
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+document.getElementById('resetBtn').addEventListener('click', () => {
+  app.style.display = 'none';
+  dropzone.style.display = 'block';
+  fileInput.value = '';
+  rows = []; columns = []; chatHistory = [];
+  document.getElementById('chatLog').innerHTML = '';
+  document.getElementById('insights').innerHTML = '';
+});
+
+function handleFile(file){
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.csv')){
+    Papa.parse(file, {
+      header:true,
+      skipEmptyLines:true,
+      dynamicTyping:false,
+      complete: res => onParsed(res.data, file.name)
+    });
+  } else {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      onParsed(data, file.name);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function onParsed(data, fileName){
+  if (!data.length){
+    alert('Файлът изглежда празен или няма разпознаваеми редове.');
+    return;
+  }
+  rows = data;
+  columns = buildProfile(data);
+  dropzone.style.display = 'none';
+  app.style.display = 'block';
+  document.getElementById('fileMeta').textContent = fileName + '  ·  ' + rows.length + ' реда  ·  ' + columns.length + ' колони';
+
+  renderStats();
+  renderPreview();
+  renderChartControls();
+  renderChart();
+  fetchAutoInsights();
+}
+
+function buildProfile(data){
+  const keys = Object.keys(data[0]);
+  const sample = data.slice(0, Math.min(data.length, 500));
+  return keys.map(key => {
+    const values = sample.map(r => r[key]).filter(v => v !== '' && v !== null && v !== undefined);
+    const numericValues = values.map(v => Number(String(v).replace(/,/g,''))).filter(v => !isNaN(v));
+    const isNumeric = values.length > 0 && numericValues.length / values.length > 0.85;
+    let stats = null;
+    if (isNumeric){
+      const sum = numericValues.reduce((a,b)=>a+b,0);
+      stats = {
+        sum, 
+        mean: sum / numericValues.length,
+        min: Math.min(...numericValues),
+        max: Math.max(...numericValues)
+      };
+    } else {
+      const freq = {};
+      values.forEach(v => { freq[v] = (freq[v]||0)+1; });
+      const uniqueCount = Object.keys(freq).length;
+      stats = { uniqueCount };
+    }
+    return { name:key, type: isNumeric ? 'numeric' : 'categorical', stats };
+  });
+}
+
+function fmtNum(n){
+  if (Math.abs(n) >= 1000) return n.toLocaleString('bg-BG', {maximumFractionDigits:0});
+  return n.toLocaleString('bg-BG', {maximumFractionDigits:2});
+}
+
+function renderStats(){
+  const numericCols = columns.filter(c => c.type === 'numeric');
+  const primary = numericCols[0];
+  const cards = [
+    { label:'Редове', value: rows.length.toLocaleString('bg-BG') },
+    { label:'Колони', value: columns.length }
+  ];
+  if (primary){
+    cards.push({ label: primary.name + ' · сума', value: fmtNum(primary.stats.sum) });
+    cards.push({ label: primary.name + ' · средно', value: fmtNum(primary.stats.mean) });
+  }
+  document.getElementById('statsRow').innerHTML = cards.map(c =>
+    `<div class="stat"><div class="label">${escapeHtml(c.label)}</div><div class="value">${escapeHtml(String(c.value))}</div></div>`
+  ).join('');
+}
+
+function renderPreview(){
+  const cols = columns.map(c => c.name);
+  const preview = rows.slice(0, 8);
+  let html = '<thead><tr>' + cols.map(c => `<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead>';
+  html += '<tbody>' + preview.map(r =>
+    '<tr>' + cols.map(c => `<td>${escapeHtml(String(r[c] ?? ''))}</td>`).join('') + '</tr>'
+  ).join('') + '</tbody>';
+  document.getElementById('previewTable').innerHTML = html;
+}
+
+function renderChartControls(){
+  const numericCols = columns.filter(c => c.type === 'numeric');
+  const catCols = columns.filter(c => c.type === 'categorical');
+  const metricSelect = document.getElementById('metricSelect');
+  const groupSelect = document.getElementById('groupSelect');
+  metricSelect.innerHTML = numericCols.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+  groupSelect.innerHTML = catCols.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('')
+    || '<option value="">(няма категорийна колона)</option>';
+  metricSelect.addEventListener('change', renderChart);
+  groupSelect.addEventListener('change', renderChart);
+}
+
+function renderChart(){
+  const metric = document.getElementById('metricSelect').value;
+  const group = document.getElementById('groupSelect').value;
+  if (!metric || !group){
+    if (chartInstance) chartInstance.destroy();
+    return;
+  }
+  const totals = {};
+  rows.forEach(r => {
+    const g = String(r[group] ?? '(без стойност)');
+    const v = Number(String(r[metric]).replace(/,/g,''));
+    if (isNaN(v)) return;
+    totals[g] = (totals[g]||0) + v;
+  });
+  let entries = Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,12);
+
+  if (chartInstance) chartInstance.destroy();
+  const ctx = document.getElementById('chartCanvas').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: entries.map(e=>e[0]),
+      datasets:[{
+        label: metric,
+        data: entries.map(e=>e[1]),
+        backgroundColor:'#2F6F4E',
+        borderRadius:2
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ ticks:{ font:{family:"'IBM Plex Mono', monospace", size:10} }, grid:{display:false} },
+        y:{ ticks:{ font:{family:"'IBM Plex Mono', monospace", size:10} }, grid:{color:'#C7CFC2'} }
+      }
+    }
+  });
+}
+
+function buildDataSummary(){
+  const colSummaries = columns.map(c => {
+    if (c.type === 'numeric'){
+      return `${c.name} (числова): сума=${fmtNum(c.stats.sum)}, средно=${fmtNum(c.stats.mean)}, мин=${fmtNum(c.stats.min)}, макс=${fmtNum(c.stats.max)}`;
+    }
+    return `${c.name} (категорийна): ${c.stats.uniqueCount} уникални стойности`;
+  }).join('\n');
+  const sampleRows = rows.slice(0, 5).map(r => JSON.stringify(r)).join('\n');
+  return `Обобщение на набора от данни (${rows.length} реда, ${columns.length} колони):\n${colSummaries}\n\nПримерни редове:\n${sampleRows}`;
+}
+
+async function callClaude(systemPrompt, userMessage, history){
+  const messages = (history || []).concat([{ role:'user', content: userMessage }]);
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:1000,
+      system: systemPrompt,
+      messages
+    })
+  });
+  if (!response.ok) throw new Error('API грешка: ' + response.status);
+  const data = await response.json();
+  const textBlock = (data.content || []).find(b => b.type === 'text');
+  return textBlock ? textBlock.text : '';
+}
+
+async function fetchAutoInsights(){
+  const insightsEl = document.getElementById('insights');
+  insightsEl.innerHTML = '<div class="note pending">Анализатор преглежда данните…</div>';
+  try {
+    const system = 'Ти си финансов анализатор, който прави кратки, конкретни бележки в полето на счетоводна книга. Отговаряй само на български, без markdown форматиране, без уводни фрази. Дай точно 4 кратки изречения, всяко на нов ред, всяко започващо с тире, посочващи най-важните наблюдения, тенденции или аномалии в данните.';
+    const text = await callClaude(system, buildDataSummary());
+    const lines = text.split('\n').map(l => l.replace(/^[-•\s]+/,'').trim()).filter(Boolean);
+    insightsEl.innerHTML = lines.map(l => `<div class="note">${escapeHtml(l)}</div>`).join('');
+  } catch(err){
+    insightsEl.innerHTML = `<div class="error">Не успях да генерирам бележки (${escapeHtml(err.message)}).</div>`;
+  }
+}
+
+document.getElementById('chatForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const input = document.getElementById('chatInput');
+  const question = input.value.trim();
+  if (!question) return;
+  const sendBtn = document.getElementById('chatSend');
+  const chatLog = document.getElementById('chatLog');
+  const errEl = document.getElementById('chatError');
+  errEl.textContent = '';
+  input.value = '';
+  sendBtn.disabled = true;
+
+  const qaBlock = document.createElement('div');
+  qaBlock.className = 'qa';
+  qaBlock.innerHTML = `<div class="q">${escapeHtml(question)}</div><div class="note pending">Анализатор мисли…</div>`;
+  chatLog.appendChild(qaBlock);
+
+  try {
+    const system = 'Ти си финансов анализатор, който отговаря кратко и конкретно на въпроси за качен набор от данни. Отговаряй само на български, без markdown форматиране, до 3-4 изречения. Ето обобщение на данните:\n\n' + buildDataSummary();
+    const answer = await callClaude(system, question, chatHistory);
+    chatHistory.push({ role:'user', content: question });
+    chatHistory.push({ role:'assistant', content: answer });
+    if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
+    qaBlock.querySelector('.note').outerHTML = `<div class="note">${escapeHtml(answer)}</div>`;
+  } catch(err){
+    qaBlock.querySelector('.note').remove();
+    errEl.textContent = 'Грешка при заявката: ' + err.message;
+  } finally {
+    sendBtn.disabled = false;
+  }
+});
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
