@@ -2,6 +2,7 @@ import PySide6.QtWidgets as q
 from PySide6.QtCore import Qt  
 from PySide6.QtGui import QIcon
 from scan import Scan
+from PySide6 import QtGui
 from global_model import GlobalModel
 
 class ScanPage(q.QMainWindow):
@@ -42,6 +43,13 @@ class ScanPage(q.QMainWindow):
         left_layout.setContentsMargins(10, 10, 10, 10)
         left_layout.setAlignment(Qt.AlignCenter)
         
+        qty_layout = q.QHBoxLayout()
+        qty_layout.setSpacing(25)
+        qty_layout.setContentsMargins(10, 10, 10, 10)
+        qty_layout.setAlignment(Qt.AlignCenter)
+        
+        
+        
         combo_layout = q.QHBoxLayout()
         combo_layout.setSpacing(8)
         combo_layout.setContentsMargins(10, 10, 10, 10)
@@ -50,6 +58,9 @@ class ScanPage(q.QMainWindow):
         
         main_window_layout.addLayout(combo_layout)
         main_window_layout.addLayout(button_layout)
+        
+        
+        
         
         
         
@@ -106,9 +117,41 @@ class ScanPage(q.QMainWindow):
         left_layout.addWidget(self.operator_label)
         
         
+        self.qty_label = q.QLabel("Количество:", self)
+        self.qty_label.setStyleSheet("font: Arial; font-size: 44px; font-weight: bold; color: white; margin-bottom: 10px; margin-top: 10px;")
+        self.qty_label.setAlignment(Qt.AlignCenter)
+        left_layout.addWidget(self.qty_label)
+        
+        
+        
+        
+        
+        
+        self.passed_qty = q.QLineEdit()
+        self.passed_qty.setValidator(QtGui.QIntValidator(0, 999999, self.passed_qty))
+        self.passed_qty.setPlaceholderText("OK Кол.")
+        self.passed_qty.setStyleSheet("background-color: #ffffff; font-size: 44px; border-radius: 3px;")  # Светлозелен фон
+        self.passed_qty.setFixedWidth(300)
+        self.passed_qty.setEchoMode(q.QLineEdit.EchoMode.Normal)  # Направете полето само за четене, ако е необходимо
+                
+        self.failed_qty = q.QLineEdit()
+        self.failed_qty.setValidator(QtGui.QIntValidator(0, 999999, self.failed_qty))
+        self.failed_qty.setPlaceholderText("NOK Кол.")
+        self.failed_qty.setStyleSheet("background-color: #ffffff; font-size: 44px; color: red; border-radius: 3px;")  # Розов фон
+        self.failed_qty.setFixedWidth(300)
+        self.failed_qty.setEchoMode(q.QLineEdit.EchoMode.Normal)  # Направете полето само за четене, ако е необходимо
+                
+        qty_layout.addStretch()
+        qty_layout.addWidget(self.passed_qty)
+        qty_layout.addWidget(self.failed_qty)
+        qty_layout.addStretch()
+        
+        left_layout.addLayout(qty_layout)
+        
         
         self.label = q.QLabel("BARCODE: ИЗЧАКВА СКАНИРАНЕ...", self)
         self.label.setStyleSheet("font: Arial; font-size: 44px; font-weight: bold; color: white;")
+        self.label.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(self.label)
         
         
@@ -206,9 +249,8 @@ class ScanPage(q.QMainWindow):
         entry.setFocusPolicy(Qt.StrongFocus)
         entry.show()
 
-        self.scan = Scan(self, self.time_label, self.work_station_label, self.operator_label, self.data_list, self.label, entry=entry, clear_scan_button=clear_scan_button, central_widget=central_widget)
+        self.scan = Scan(self, self.time_label, self.work_station_label, self.operator_label, self.data_list, self.label, entry=entry, clear_scan_button=clear_scan_button, central_widget=central_widget, passed_qty=self.passed_qty, failed_qty=self.failed_qty)
         self.scan.entry.setFocus()
-        self.scan.entry.grabKeyboard()
 
         self.scan.refresh_data_list()
 
@@ -216,12 +258,11 @@ class ScanPage(q.QMainWindow):
         super().showEvent(event)
         if hasattr(self, 'scan') and self.scan.entry:
             self.scan.entry.setFocus()
-            self.scan.entry.grabKeyboard()
 
     def hideEvent(self, event):
         super().hideEvent(event)
         if hasattr(self, 'scan') and self.scan.entry:
-            self.scan.entry.releaseKeyboard()
+            self.scan.entry.clearFocus()
 
     def go_back(self):
         print("Going back to login from scan page")
@@ -264,6 +305,10 @@ class ScanPage(q.QMainWindow):
                             print(f"Сканираното съдържание с ID {self.db_id} не е намерено.")
                 except Exception as e:
                     print(f"Грешка при изтриване на сканираното съдържание: {e}")
+                    # ПОПРАВКА: при неуспешен DELETE транзакцията остава отворена без rollback -
+                    # добавяме го тук, за да не увисне връзката "idle in transaction"
+                    # (същия проблем, заради който по-рано увисна ALTER TABLE за 3+ часа).
+                    g_model.conn.rollback()
                 else:
                     return
 
@@ -281,6 +326,3 @@ class ScanPage(q.QMainWindow):
         db_id = item.data(Qt.ItemDataRole.UserRole) # Use Qt.UserRole if on PySide2
         if db_id:
             self.db_id = db_id
-
-       
-       

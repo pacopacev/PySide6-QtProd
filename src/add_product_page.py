@@ -30,28 +30,35 @@ class AddProductPage(q.QMainWindow):
         main_window_layout.setAlignment(Qt.AlignCenter)
         main_window_layout.setContentsMargins(3, 3, 3, 3)
 
-        title_layout = q.QHBoxLayout()
-        title_layout.setSpacing(8)
-        title_layout.setContentsMargins(10, 10, 10, 10)
+        add_mass_product_layout = q.QHBoxLayout()
+        add_mass_product_layout.setSpacing(8)
+        # add_mass_product_layout.setContentsMargins(10, 10, 10, 10)
+        
+        single_product_layout = q.QVBoxLayout()
+        single_product_layout.setSpacing(8)
+        # single_product_layout.setContentsMargins(10, 10, 10, 10)
 
-        main_window_layout.addLayout(title_layout)
+        main_window_layout.addLayout(add_mass_product_layout)
+        main_window_layout.addLayout(single_product_layout)
 
-        title_label = q.QLabel("Add Product", self)
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 21px; font-weight: bold; color: #000000; border: none;")
-        title_layout.addWidget(title_label)
+        add_mass_product_title_label = q.QLabel("Add mass products", self)
+        add_mass_product_title_label.setAlignment(Qt.AlignCenter)
+        add_mass_product_title_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #000000; border: none;")
+        add_mass_product_layout.addWidget(add_mass_product_title_label)
 
-        title_layout.addStretch()
-        title_layout.addWidget(self.file_upload_widget)
+        add_mass_product_layout.addStretch()
+        add_mass_product_layout.addWidget(self.file_upload_widget)
 
         mass_upload_button = Button(text="Mass Upload\n from Excel")
-        title_layout.addWidget(mass_upload_button)
+        add_mass_product_layout.addWidget(mass_upload_button)
 
         mass_upload_button.clicked.connect(self.add_product.mass_upload_file)
 
         Horizontal_line_color = "#4A90E2"
         horizontal_devider = QHSeparationLine(color=Horizontal_line_color)
         main_window_layout.addWidget(horizontal_devider)
+        
+        single_product_layout = q.QVBoxLayout()
 
         main_window_layout.addStretch()
 

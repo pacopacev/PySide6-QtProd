@@ -11,7 +11,7 @@ from PySide6.QtCore import Qt
 
 
 class Scan(QObject):
-    def __init__(self, page, time_label=None, work_station_label=None, operator_label=None, data_list=None, label=None, entry=None, clear_scan_button=None, central_widget=None):
+    def __init__(self, page, time_label=None, work_station_label=None, operator_label=None, data_list=None, label=None, entry=None, clear_scan_button=None, central_widget=None, passed_qty=None, failed_qty=None):
         super().__init__()
         self.page = page
         self.time_label = time_label
@@ -23,6 +23,8 @@ class Scan(QObject):
        
        
         self.central_widget = central_widget
+        self.passed_qty = passed_qty
+        self.failed_qty = failed_qty
         
         
         # Пускаме си таймера за часа
@@ -83,8 +85,13 @@ class Scan(QObject):
                     self.operator_label.setText(f"Оператор: {result[0]}")
 
                     print(f"Името '{result[0]}' е успешно изписано на екрана!")
+            # ПОПРАВКА: SELECT-ът пак отваря транзакция в psycopg2 — без commit/rollback
+            # тя остава отворена ("idle in transaction") и може да блокира бъдещ ALTER TABLE / DDL.
+            g_model.conn.commit()
         except Exception as e:
             print(f"Грешка при дърпане на оператор: {e}")
+            # ПОПРАВКА: при грешка транзакцията пак остава отворена — правим rollback.
+            g_model.conn.rollback()
             
     def getLastScannedJobOrderID(self):
         self.station_id = self.get_station_id()
@@ -131,9 +138,14 @@ class Scan(QObject):
                 else:
                     print(f"Няма намерени сканирания за последните 3 дни за станция {current_station}")
                 current_item = self.data_list.currentItem()
+            # ПОПРАВКА: затваряме тази read-only транзакция, за да не стои връзката
+            # "idle in transaction" и да не държи ключалки върху station_scans.
+            g_model.conn.commit()
                    
         except Exception as e:
             print(f"Грешка при извличане на поръчките: {e}") # Винаги принтирай грешката в try-except, за да знаеш ако нещо се счупи!
+            # ПОПРАВКА: rollback, за да не остане връзката закачена в средата на транзакция при грешка.
+            g_model.conn.rollback()
         
     
     def get_station_id(self):
@@ -154,8 +166,13 @@ class Scan(QObject):
                     return result[0]
                 else:
                     print(f"Няма намерена станция с име {self.computer_name}")
+            # ПОПРАВКА: същия риск от "idle in transaction" — затваряме след четенето.
+            # ЗАБЕЛЕЖКА: и двата пътя с `return result[0]` по-горе прескачат този ред,
+            # затова този commit се изпълнява само по пътя "станция не е намерена". Виж бележката под кода.
+            g_model.conn.commit()
         except Exception as e:
             print(f"Грешка при извличане на станциите: {e}")
+            g_model.conn.rollback()
             
     def refresh_data_list(self):
         
@@ -182,6 +199,12 @@ class Scan(QObject):
         print("Баркод сканиран")
         # Use .text() instead of .get()
         barcode = self.entry.text().strip()
+        passed_qty = self.passed_qty.text().strip() if self.passed_qty else ""
+        failed_qty = self.failed_qty.text().strip() if self.failed_qty else ""
+        if not passed_qty and not failed_qty:
+            self.label.setText("Моля въведете количество OK или NOK")
+            self.timer.singleShot(2000, lambda: self.reset_ui())
+            return
         
       
         
@@ -211,7 +234,7 @@ class Scan(QObject):
             
             
             if to_record_to_database: 
-                self.record_scan_to_db(barcode)
+                self.record_scan_to_db(barcode, passed_qty, failed_qty)
             self.timer.singleShot(2000, lambda: self.clear_scan())
             
     def checkBArcodeIfExists(self, barcode):
@@ -229,32 +252,33 @@ class Scan(QObject):
                 
                 if result:
                     print(f"Баркодът {barcode} вече е сканиран")
+                    # ПОПРАВКА: това е точно заявката, която открихме "idle in transaction"
+                    # за над 3 часа и блокира ALTER TABLE по-рано. Затваряме я преди да върнем резултат.
+                    g_model.conn.commit()
                     return True
                 else:
                     print(f"Баркодът {barcode} е нов")
+                    g_model.conn.commit()
                     return False
         except Exception as e:    
             print(f"Грешка при проверка на баркодите: {e}")
-    def record_scan_to_db(self, barcode):
+            g_model.conn.rollback()
+    def record_scan_to_db(self, barcode, passed_qty, failed_qty):
         g_model = self.page.stacked_widget.model
         if g_model.conn is None:
             return
         try:
             with g_model.conn.cursor() as cursor:
                 query = """
-                INSERT INTO station_scans (job_order_id, station_id, scanned_at, user_id)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO station_scans (job_order_id, station_id, scanned_at, user_id, passed_qty, failed_qty)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 """
-                cursor.execute(query, (barcode, self.get_station_id(), datetime.now(), g_model.get_user_id(), ))
+                cursor.execute(query, (barcode, self.get_station_id(), datetime.now(), g_model.get_user_id(), passed_qty, failed_qty))
                 g_model.conn.commit()
                 
         except Exception as e:    
-            print(f"Грешка при записване на сканираните баркоди: {e}")
+            print(f"Грешка при записване на сканираните баркодове: {e}")
+            # ПОПРАВКА: при неуспешен insert, правим rollback вместо да оставим транзакцията отворена.
+            g_model.conn.rollback()
         self.refresh_data_list()
         self.getLastScannedJobOrderID()
-        
-    
-        
-    
-              
-    

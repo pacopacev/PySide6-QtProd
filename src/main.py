@@ -213,7 +213,6 @@ class MainWindow(q.QMainWindow):
             self.pages_container.setCurrentIndex(2)
             if self.scan_page.scan.entry:
                 self.scan_page.scan.entry.setFocus()
-                self.scan_page.scan.entry.grabKeyboard()
     
     def show_add_product_page(self):
         # Превключваме на AddProductPage (Индекс 3)
