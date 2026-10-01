@@ -11,7 +11,7 @@ from PySide6.QtCore import Qt
 
 
 class Scan(QObject):
-    def __init__(self, page, time_label=None, work_station_label=None, operator_label=None, data_list=None, label=None, entry=None, clear_scan_button=None, central_widget=None, passed_qty=None, failed_qty=None):
+    def __init__(self, page, time_label=None, work_station_label=None, operator_label=None, data_list=None, label=None, entry=None, print_label_button=None, central_widget=None, inspected_qty=None, passed_qty=None, failed_qty=None):
         super().__init__()
         self.page = page
         self.time_label = time_label
@@ -23,6 +23,8 @@ class Scan(QObject):
        
        
         self.central_widget = central_widget
+        
+        self.inspected_qty = inspected_qty
         self.passed_qty = passed_qty
         self.failed_qty = failed_qty
         
@@ -34,25 +36,34 @@ class Scan(QObject):
         
 
         self.entry = entry
-        self.clear_scan_button = clear_scan_button
-        if self.clear_scan_button:
-            self.clear_scan_button.clicked.connect(self.clear_scan)
+        self.print_label_button = print_label_button
+        if self.print_label_button:
+            self.print_label_button.clicked.connect(self.clear_scan)
 
         self.timer.start(1000)
 
         self.update_time()
         self.set_work_station()
+        
+        
 
         # Use the provided entry if available; otherwise create one parented to the page
         if self.entry:
             self.entry.returnPressed.connect(self.barcode_scanned)
+            print("Using provided QLineEdit for barcode scanning.")
         else:
+            print("No QLineEdit provided. Creating a new one for barcode scanning.")
             # parent the QLineEdit to the page (a QWidget) instead of this QObject
             self.entry = q.QLineEdit(self.page)
             self.entry.hide()
             self.entry.returnPressed.connect(self.barcode_scanned)
-
     
+
+    def clear_qty_fields(self):
+            self.inspected_qty.clear()
+            self.passed_qty.clear()
+            self.failed_qty.clear()
+            self.db_id = None  # Reset the db_id when clearing the fields
     
     
     def update_time(self):
@@ -99,6 +110,9 @@ class Scan(QObject):
         g_model = self.page.stacked_widget.model
         if g_model.conn is None:
             return
+
+        if self.data_list is not None:
+            self.data_list.clear()
 
         # Проверка: Ако станцията още не е заредена, използваме user_id като резервен вариант
         current_station = self.station_id if self.station_id else self.user_id
@@ -186,24 +200,34 @@ class Scan(QObject):
             self.entry.setFocus()
         if self.label:
             self.label.setText("BARCODE: ИЗЧАКВА СКАНИРАНЕ...")
-        if self.clear_scan_button:
-            self.clear_scan_button.setEnabled(False)
+            self.clear_qty_fields()
+        if self.print_label_button:
+            self.print_label_button.setEnabled(False)
     def reset_ui(self):
         self.central_widget.setStyleSheet("background-color: #0047AB;")
         self.label.setText("BARCODE: ИЗЧАКВА СКАНИРАНЕ...")
         self.clear_scan()
     def barcode_scanned(self):
-        
-        to_record_to_database = True
-        
-        print("Баркод сканиран")
-        # Use .text() instead of .get()
-        barcode = self.entry.text().strip()
+        inspected_qty = self.inspected_qty.text().strip() if self.inspected_qty else ""
         passed_qty = self.passed_qty.text().strip() if self.passed_qty else ""
         failed_qty = self.failed_qty.text().strip() if self.failed_qty else ""
-        if not passed_qty and not failed_qty:
-            self.label.setText("Моля въведете количество OK или NOK")
-            self.timer.singleShot(2000, lambda: self.reset_ui())
+        
+        if not self.check_corect_input_qty(inspected_qty, passed_qty, failed_qty):
+            q.QMessageBox.warning(self.page, "Внимание!", "Моля, въведете правилно количество за ОБЩО, OK и NOK.")
+            return
+
+        to_record_to_database = True
+
+        print("Баркод сканиран")
+        raw_barcode = self.entry.text().strip()
+        barcode = raw_barcode.removeprefix("#")
+        print(f"Сканиран баркод: {barcode}")
+
+        if not barcode.isascii() or not barcode.isdigit():
+            q.QMessageBox.warning(self.page, "Невалиден баркод", "Баркодът трябва да съдържа само цифри и може да започва с #.")
+            if self.entry:
+                self.entry.clear()
+                self.entry.setFocus()
             return
         
       
@@ -223,18 +247,18 @@ class Scan(QObject):
             
             # print(f"Сканиран е баркод: {barcode}")
             if to_record_to_database == False:
-                self.label.setText(f"Баркодът: {barcode} вече е сканиран")
+                text = f"Баркодът: {barcode} вече е сканиран"
             else:
                 text = f"Сканиран е баркод: {barcode}"
             self.label.setText(text)
             self.label.show()
             
-            if self.clear_scan_button:
-                self.clear_scan_button.setEnabled(True)
+            if self.print_label_button:
+                self.print_label_button.setEnabled(True)
             
             
             if to_record_to_database: 
-                self.record_scan_to_db(barcode, passed_qty, failed_qty)
+                self.record_scan_to_db(barcode, inspected_qty, passed_qty, failed_qty)
             self.timer.singleShot(2000, lambda: self.clear_scan())
             
     def checkBArcodeIfExists(self, barcode):
@@ -263,22 +287,40 @@ class Scan(QObject):
         except Exception as e:    
             print(f"Грешка при проверка на баркодите: {e}")
             g_model.conn.rollback()
-    def record_scan_to_db(self, barcode, passed_qty, failed_qty):
+    def record_scan_to_db(self, barcode, inspected_qty, passed_qty, failed_qty):
         g_model = self.page.stacked_widget.model
         if g_model.conn is None:
             return
         try:
             with g_model.conn.cursor() as cursor:
                 query = """
-                INSERT INTO station_scans (job_order_id, station_id, scanned_at, user_id, passed_qty, failed_qty)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO station_scans (job_order_id, station_id, scanned_at, user_id, inspected_qty, passed_qty, failed_qty)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """
-                cursor.execute(query, (barcode, self.get_station_id(), datetime.now(), g_model.get_user_id(), passed_qty, failed_qty))
+                cursor.execute(query, (barcode, self.get_station_id(), datetime.now(), g_model.get_user_id(), inspected_qty, passed_qty, failed_qty))
                 g_model.conn.commit()
                 
         except Exception as e:    
-            print(f"Грешка при записване на сканираните баркодове: {e}")
+            print(f"Грешка при записване на сканираните баркoдове: {e}")
             # ПОПРАВКА: при неуспешен insert, правим rollback вместо да оставим транзакцията отворена.
             g_model.conn.rollback()
+            return
         self.refresh_data_list()
         self.getLastScannedJobOrderID()
+        
+    def check_corect_input_qty(self, inspected_qty, passed_qty, failed_qty):
+        try:
+            quantities = tuple(int(value) for value in (inspected_qty, passed_qty, failed_qty))
+        except (TypeError, ValueError):
+            quantities = ()
+
+        is_valid = len(quantities) == 3 and all(value >= 0 for value in quantities) and sum(value != 0 for value in quantities) >= 2
+        if not is_valid:
+            self.inspected_qty.clear()
+            self.passed_qty.clear()
+            self.failed_qty.clear()
+            if self.entry:
+                self.entry.clear()
+        return is_valid
+        
+    

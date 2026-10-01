@@ -106,7 +106,7 @@ class LoginPage(q.QWidget):
         layout.addLayout(version_layout)
         
         
-        version = Version(1, 0, 1)
+        version = Version(1, 1, 0)  # Примерна версия
         version_label = version.version_label
         version_layout.addStretch()
         version_layout.addWidget(version_label)
