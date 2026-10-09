@@ -359,11 +359,13 @@ class ScanPage(q.QMainWindow):
                 else:
                     return
     def print_label(self):
+        print("Print label button clicked")
         if self.db_id == None:
             q.QMessageBox.warning(self, "Предупреждение!", "Няма избрано съдържание за печат.")
             return
         g_model = GlobalModel()
         if g_model.conn is None:
+            print("Database connection is not established.")
             return
         
         try:
@@ -409,6 +411,7 @@ class ScanPage(q.QMainWindow):
         db_id = item.data(Qt.ItemDataRole.UserRole) # Use Qt.UserRole if on PySide2
         if db_id:
             self.db_id = db_id
+            print(f"Selected scan with DB ID: {self.db_id}")
             
     
                    
