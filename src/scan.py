@@ -37,8 +37,6 @@ class Scan(QObject):
 
         self.entry = entry
         self.print_label_button = print_label_button
-        if self.print_label_button:
-            self.print_label_button.clicked.connect(self.clear_scan)
 
         self.timer.start(1000)
 

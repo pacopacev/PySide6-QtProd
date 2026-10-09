@@ -4,6 +4,8 @@ from PySide6.QtGui import QIcon
 from scan import Scan
 from PySide6 import QtGui
 from global_model import GlobalModel
+import time
+from print import PrintLabel
 
 class ScanPage(q.QMainWindow):
     def __init__(self, stacked_widget=None):
@@ -25,8 +27,7 @@ class ScanPage(q.QMainWindow):
         
         # Основен layout за самия прозорец
         main_window_layout = q.QVBoxLayout(central_widget)
-        main_window_layout.setAlignment(Qt.AlignCenter) 
-        main_window_layout.setContentsMargins(0, 0, 0, 0) 
+        main_window_layout.setContentsMargins(8, 8, 8, 8)
         
         button_layout = q.QHBoxLayout()
         button_layout.setSpacing(8)
@@ -44,8 +45,8 @@ class ScanPage(q.QMainWindow):
         left_layout.setAlignment(Qt.AlignCenter)
         
         qty_layout = q.QHBoxLayout()
-        qty_layout.setSpacing(25)
-        qty_layout.setContentsMargins(10, 10, 10, 10)
+        qty_layout.setSpacing(8)
+        qty_layout.setContentsMargins(4, 4, 4, 4)
         qty_layout.setAlignment(Qt.AlignCenter)
         
         
@@ -53,8 +54,8 @@ class ScanPage(q.QMainWindow):
         combo_layout = q.QHBoxLayout()
         combo_layout.setSpacing(8)
         combo_layout.setContentsMargins(10, 10, 10, 10)
-        combo_layout.addLayout(left_layout)
-        combo_layout.addLayout(right_layout)
+        combo_layout.addLayout(left_layout, 3)
+        combo_layout.addLayout(right_layout, 2)
         
         main_window_layout.addLayout(combo_layout)
         main_window_layout.addLayout(button_layout)
@@ -72,7 +73,8 @@ class ScanPage(q.QMainWindow):
         
         self.data_list = q.QListWidget(self)
         # self.data_list.setFixedHeight(500)
-        self.data_list.setFixedWidth(412)
+        self.data_list.setMinimumWidth(180)
+        self.data_list.setSizePolicy(q.QSizePolicy.Policy.Expanding, q.QSizePolicy.Policy.Expanding)
         self.data_list.setSpacing(1)
         self.data_list.setStyleSheet("""
     QListWidget {
@@ -99,12 +101,7 @@ class ScanPage(q.QMainWindow):
         right_layout.addWidget(self.data_list)
         
 
-# 2. Добавяме елементи вътре
 
-        # items_count = 100
-        # for i in range(items_count):
-        #     item = q.QListWidgetItem(f"Item {i}")
-        #     self.data_list.addItem(item)
 
         
         self.work_station_label = q.QLabel("", self)
@@ -119,7 +116,7 @@ class ScanPage(q.QMainWindow):
         
         
         self.qty_label = q.QLabel("Количества по поръчка:", self)
-        self.qty_label.setStyleSheet("font: Arial; font-size: 44px; font-weight: bold; color: white; margin-bottom: 10px; margin-top: 10px;")
+        self.qty_label.setStyleSheet("font: Arial; font-size: 30px; font-weight: bold; color: white; margin-bottom: 10px; margin-top: 10px;")
         self.qty_label.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(self.qty_label)
         
@@ -128,24 +125,27 @@ class ScanPage(q.QMainWindow):
         self.inspected_qty = q.QLineEdit()
         self.inspected_qty.setValidator(QtGui.QIntValidator(0, 999999, self.inspected_qty))
         self.inspected_qty.setPlaceholderText("Общо Кол.")
-        self.inspected_qty.setStyleSheet("background-color: #ffffff; font-size: 34px; border-radius: 3px;")  # Розов фон")
-        self.inspected_qty.setFixedWidth(300)
+        self.inspected_qty.setStyleSheet("background-color: #ffffff; font-size: 24px; border-radius: 3px;")  # Розов фон")
+        self.inspected_qty.setMinimumWidth(0)
+        self.inspected_qty.setSizePolicy(q.QSizePolicy.Policy.Expanding, q.QSizePolicy.Policy.Fixed)
         self.inspected_qty.setEchoMode(q.QLineEdit.EchoMode.Normal)  # Направете полето само за четене, ако е необходимо
         
 
         self.passed_qty = q.QLineEdit()
         self.passed_qty.setValidator(QtGui.QIntValidator(0, 999999, self.passed_qty))
         self.passed_qty.setPlaceholderText("OK Кол.")
-        self.passed_qty.setStyleSheet("background-color: #ffffff; font-size: 34px; color: green; border-radius: 3px;")  # Светлозелен фон
-        self.passed_qty.setFixedWidth(300)
+        self.passed_qty.setStyleSheet("background-color: #ffffff; font-size: 24px; color: green; border-radius: 3px;")  # Светлозелен фон
+        self.passed_qty.setMinimumWidth(0)
+        self.passed_qty.setSizePolicy(q.QSizePolicy.Policy.Expanding, q.QSizePolicy.Policy.Fixed)
         self.passed_qty.setEchoMode(q.QLineEdit.EchoMode.Normal)
           # Направете полето само за четене, ако е необходимо
                 
         self.failed_qty = q.QLineEdit()
         self.failed_qty.setValidator(QtGui.QIntValidator(0, 999999, self.failed_qty))
         self.failed_qty.setPlaceholderText("NOK Кол.")
-        self.failed_qty.setStyleSheet("background-color: #ffffff; font-size: 34px; color: red; border-radius: 3px;")  # Розов фон
-        self.failed_qty.setFixedWidth(300)
+        self.failed_qty.setStyleSheet("background-color: #ffffff; font-size: 24px; color: red; border-radius: 3px;")  # Розов фон
+        self.failed_qty.setMinimumWidth(0)
+        self.failed_qty.setSizePolicy(q.QSizePolicy.Policy.Expanding, q.QSizePolicy.Policy.Fixed)
         self.failed_qty.setEchoMode(q.QLineEdit.EchoMode.Normal)  # Направете полето само за четене, ако е необходимо
           # Направете полето само за четене, ако е необходимо
 
@@ -160,20 +160,20 @@ class ScanPage(q.QMainWindow):
         
         
         self.label = q.QLabel("BARCODE: ИЗЧАКВА СКАНИРАНЕ...", self)
-        self.label.setStyleSheet("font: Arial; font-size: 44px; font-weight: bold; color: white;")
+        self.label.setStyleSheet("font: Arial; font-size: 30px; font-weight: bold; color: white;")
         self.label.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(self.label)
         
         
         self.time_label = q.QLabel("00:00:00", self)
-        self.time_label.setStyleSheet("font: Arial; font-size: 44px; font-weight: bold; color: white; margin-top: 34px;")
+        self.time_label.setStyleSheet("font: Arial; font-size: 30px; font-weight: bold; color: white; margin-top: 16px;")
         self.time_label.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(self.time_label)
         
         
         
         help_label = q.QLabel("Натисни ESC за изход | Press ESC to exit", self)
-        help_label.setStyleSheet("font: Arial; font-size: 13px; font-weight: normal; color: white; margin-top: 34px;")
+        help_label.setStyleSheet("font: Arial; font-size: 13px; font-weight: normal; color: white; margin-top: 16px;")
         help_label.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(help_label)
         
@@ -184,8 +184,10 @@ class ScanPage(q.QMainWindow):
         back_button = q.QPushButton("LOG\nOUT", self)
         delete_scan_button = q.QPushButton("DELETE\n SCAN", self)
         print_label_button = q.QPushButton("ПЕЧАТ НА ЕТИКЕТ\nPRINT LABEL", self)
-        print_label_button.setEnabled(False)
-        
+        print_label_button.setEnabled(True)
+        print_label_button.setToolTip("Печат на етикет за избраната сканирана поръчка\nPrint label for the selected scanned order")
+        print_label_button.clicked.connect(self.print_label)
+
         button_layout.addStretch()
         # ПОПРАВКА: Изтрита е излишната скоба отдолу
         # button_layout.addWidget(delete_scan_button)
@@ -194,7 +196,7 @@ class ScanPage(q.QMainWindow):
             QPushButton {
                 background-color: red;
                 color: white;
-                font-size: 21px;
+                font-size: 16px;
                 font-weight: bold;
                 border: none;
                 padding: 5px 10px;
@@ -209,7 +211,7 @@ class ScanPage(q.QMainWindow):
             QPushButton {
                 background-color: red;
                 color: white;
-                font-size: 21px;
+                font-size: 16px;
                 font-weight: bold;
                 border: none;
                 padding: 5px 10px;
@@ -234,19 +236,20 @@ class ScanPage(q.QMainWindow):
                 background-color: #357ABD;  
             }
         """)
-        back_button.setFixedWidth(130)
-        back_button.setFixedHeight(130)
+        back_button.setMinimumSize(90, 70)
+        back_button.setMaximumSize(130, 100)
         
         
-        delete_scan_button.setFixedWidth(130)
-        delete_scan_button.setFixedHeight(130)
+        delete_scan_button.setMinimumSize(90, 70)
+        delete_scan_button.setMaximumSize(130, 100)
         delete_scan_button.clicked.connect(self.delete_scan)
         
         print_label_button.setMinimumWidth(70)
         # print_label_button.setMinimumHeight(70)
         
         # print_label_button.setFixedWidth(130)
-        print_label_button.setFixedHeight(130)
+        print_label_button.setMinimumHeight(70)
+        print_label_button.setMaximumHeight(100)
         
         button_layout.addWidget(print_label_button)
         button_layout.addWidget(delete_scan_button)
@@ -355,7 +358,41 @@ class ScanPage(q.QMainWindow):
                     g_model.conn.rollback()
                 else:
                     return
-
+    def print_label(self):
+        if self.db_id == None:
+            q.QMessageBox.warning(self, "Предупреждение!", "Няма избрано съдържание за печат.")
+            return
+        g_model = GlobalModel()
+        if g_model.conn is None:
+            return
+        
+        try:
+            with g_model.conn.cursor() as cursor:
+                query = """
+            select ss.job_order_id, pr.ma_number, COALESCE(pr."name", '-'),jo.price_offer_num,  ss.inspected_qty, ss.passed_qty, ss.failed_qty, usr.first_name
+            FROM station_scans ss
+            LEFT JOIN job_orders jo ON jo.job_order_number = CAST(ss.job_order_id AS TEXT)
+            left join products pr on pr.id = jo.product_id
+            left join users usr on usr.id = ss.user_id
+            WHERE ss.id = %s """
+                cursor.execute(query, (self.db_id,))
+                result = cursor.fetchone()
+                if result:
+                    product = result[2]
+                    ma = result[1]
+                    qty = result[4]
+                    job = result[0]
+                    barcode = f"{product}-{ma}-{job}-{qty}"
+                    pon = result[3]
+                    copies = 1
+                    date = time.strftime("%d.%m.%Y")
+                    
+                    printer = PrintLabel()
+                    printer.print_label(product, ma, qty, job, barcode, pon, copies, date)
+                else:
+                    q.QMessageBox.warning(self, "Грешка", f"Сканираното съдържание с ID {self.db_id} не е намерено.")
+        except Exception as e:
+            q.QMessageBox.critical(self, "Грешка", f"Грешка при печат на етикета: {e}")
     
     
         
@@ -380,8 +417,6 @@ class ScanPage(q.QMainWindow):
         db_id = item.data(Qt.ItemDataRole.UserRole) # Use Qt.UserRole if on PySide2
         if db_id:
             self.db_id = db_id
-            
-            
             try:
                 with g_model.conn.cursor() as cursor:
                     query = """

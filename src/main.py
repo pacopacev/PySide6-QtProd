@@ -25,8 +25,9 @@ class LoginPage(q.QWidget):
         
         
         layout = q.QVBoxLayout(self)
-        layout.setContentsMargins(10, 200, 10, 10)
-        layout.setSpacing(30)
+        layout.setContentsMargins(10, 16, 10, 10)
+        layout.setSpacing(20)
+        layout.addStretch()
         
         title_label = q.QLabel("LOGIN", self)
         title_label.setAlignment(Qt.AlignCenter)
@@ -106,7 +107,10 @@ class LoginPage(q.QWidget):
         layout.addLayout(version_layout)
         
         
-        version = Version(1, 1, 0)  # Примерна версия
+        version_change_tooltip = "UI fixes, bug fixes, and label printing improvements."
+        
+        
+        version = Version(1, 2, 1, version_change_tooltip)  # Примерна версия
         version_label = version.version_label
         version_layout.addStretch()
         version_layout.addWidget(version_label)
