@@ -2196,6 +2196,7 @@
   ('pkgutil', 'C:\\Python314\\Lib\\pkgutil.py', 'PYMODULE'),
   ('platform', 'C:\\Python314\\Lib\\platform.py', 'PYMODULE'),
   ('pprint', 'C:\\Python314\\Lib\\pprint.py', 'PYMODULE'),
+  ('print', 'H:\\QtProd\\print.py', 'PYMODULE'),
   ('psycopg2',
    'H:\\QtProd\\.venv\\Lib\\site-packages\\psycopg2\\__init__.py',
    'PYMODULE'),
