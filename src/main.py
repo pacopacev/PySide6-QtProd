@@ -110,7 +110,7 @@ class LoginPage(q.QWidget):
         version_change_tooltip = "UI fixes, bug fixes, and label printing improvements."
         
         
-        version = Version(1, 2, 1, version_change_tooltip)  # Примерна версия
+        version = Version(1, 2, 2, version_change_tooltip)  # Примерна версия
         version_label = version.version_label
         version_layout.addStretch()
         version_layout.addWidget(version_label)

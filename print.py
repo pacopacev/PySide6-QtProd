@@ -40,7 +40,7 @@ class PrintLabel:
         barcode = self.zpl_safe(barcode)
 
         m = self.margin
-        qy = 150
+        qy = 170
         modules = self.qr_size(barcode) // self.qr_mag
         max_qr_width = self.label_width - 2 * m
         max_qr_height = self.label_height - qy - m
@@ -60,10 +60,11 @@ class PrintLabel:
             f"^LL{self.label_height}\n"
             f"^FO1,19^GB{self.label_width - 10},{self.label_height - 10},3,B,1^FS\n"
             f"^PQ{int(copies)}\n"
-            f"^FO{m},48^FB{block_w},1,0,L,0^A0N,32,32^FDPRODUCT: {product}^FS\n"
-            f"^FO{m},93^FB{block_w},1,0,L,0^A0N,32,32^FDMA: {ma}^FS\n"
-            f"^FO{m},138^FB{block_w},1,0,L,0^A0N,32,32^FDQTY: {qty}^FS\n"
-            f"^FO{m},183^FB{block_w},1,0,L,0^A0N,32,32^FDJO: {job}^FS\n"
+            f"^FO{m},48^FB{block_w},1,0,L,0^A0N,32,32^FDPRODUCT:^FS\n"
+            f"^FO{m},88^FB{block_w},1,0,L,0^A0N,32,32^FD{product}^FS\n"
+            f"^FO{m},128^FB{block_w},1,0,L,0^A0N,32,32^FDMA: {ma}^FS\n"
+            f"^FO{m},173^FB{block_w},1,0,L,0^A0N,32,32^FDQTY: {qty}^FS\n"
+            f"^FO{m},218^FB{block_w},1,0,L,0^A0N,32,32^FDJO: {job}^FS\n"
             f"^FO{qx},{qy}^BQN,2,{qr_mag}^FDQA,{barcode}^FS\n"
             f"^FO{m},296^FB{block_w},1,0,L,0^A0N,28,28^FDPON: {pon}^FS\n"
             f"^FO{m},328^FB{block_w},1,0,L,0^A0N,28,28^FDDATE: {date}^FS\n"
