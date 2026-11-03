@@ -107,10 +107,10 @@ class LoginPage(q.QWidget):
         layout.addLayout(version_layout)
         
         
-        version_change_tooltip = "UI fixes, bug fixes, and label printing improvements."
+        version_change_tooltip = "Migration to DB."
         
         
-        version = Version(1, 2, 2, version_change_tooltip)  # Примерна версия
+        version = Version(1, 3, 2, version_change_tooltip)  # Примерна версия
         version_label = version.version_label
         version_layout.addStretch()
         version_layout.addWidget(version_label)

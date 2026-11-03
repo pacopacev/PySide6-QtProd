@@ -103,7 +103,7 @@ class Scan(QObject):
             g_model.conn.rollback()
             
     def getLastScannedJobOrderID(self):
-        self.station_id = self.get_station_id()
+        self.station_id = self.get_station_id()[0]
         print(self.station_id)
         g_model = self.page.stacked_widget.model
         if g_model.conn is None:
@@ -126,11 +126,17 @@ class Scan(QObject):
                 #     ORDER BY scanned_at DESC
                 # """
                 
+                # query = """
+                #     SELECT id, job_order_id, scanned_at FROM station_scans
+                #     WHERE station_id = %s
+                #     ORDER BY scanned_at DESC
+                # """
+                
                 query = """
-                    SELECT id, job_order_id, scanned_at FROM station_scans
-                    WHERE station_id = %s
-                    ORDER BY scanned_at DESC
-                """
+                                    SELECT id, barcode, scanned_at FROM barcode_scans
+                                    WHERE production_station_id = %s
+                                    ORDER BY scanned_at DESC
+                                """
                 # ПОПРАВКА: Подаваме динамично текущата станция вместо твърдото число 4
                 cursor.execute(query, (current_station,))
                 result = cursor.fetchall()
@@ -151,7 +157,7 @@ class Scan(QObject):
                     print(f"Няма намерени сканирания за последните 3 дни за станция {current_station}")
                 current_item = self.data_list.currentItem()
             # ПОПРАВКА: затваряме тази read-only транзакция, за да не стои връзката
-            # "idle in transaction" и да не държи ключалки върху station_scans.
+            # "idle in transaction" и да не държи ключалки върху barcode_scans.
             g_model.conn.commit()
                    
         except Exception as e:
@@ -174,8 +180,10 @@ class Scan(QObject):
                 cursor.execute(query, (self.computer_name,))
                 result = cursor.fetchone()
                 
+                res = [result[0], self.computer_name]
+                
                 if result:
-                    return result[0]
+                    return res
                 else:
                     print(f"Няма намерена станция с име {self.computer_name}")
             # ПОПРАВКА: същия риск от "idle in transaction" — затваряме след четенето.
@@ -266,10 +274,10 @@ class Scan(QObject):
         try:
             with g_model.conn.cursor() as cursor:
                 query = """
-                SELECT id FROM station_scans
-                WHERE job_order_id = %s
+                SELECT id FROM barcode_scans
+                WHERE barcode = %s
                 """
-                cursor.execute(query, (int(barcode),))
+                cursor.execute(query, barcode,)
                 result = cursor.fetchone()
                 
                 if result:
@@ -287,15 +295,24 @@ class Scan(QObject):
             g_model.conn.rollback()
     def record_scan_to_db(self, barcode, inspected_qty, passed_qty, failed_qty):
         g_model = self.page.stacked_widget.model
+        
+        device_id=""
         if g_model.conn is None:
             return
         try:
             with g_model.conn.cursor() as cursor:
+                # query = """
+                # INSERT INTO station_scans (job_order_id, station_id, scanned_at, user_id, inspected_qty, passed_qty, failed_qty)
+                # VALUES (%s, %s, %s, %s, %s, %s, %s)
+                # """
+                
                 query = """
-                INSERT INTO station_scans (job_order_id, station_id, scanned_at, user_id, inspected_qty, passed_qty, failed_qty)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """
-                cursor.execute(query, (barcode, self.get_station_id(), datetime.now(), g_model.get_user_id(), inspected_qty, passed_qty, failed_qty))
+                                INSERT INTO barcode_scans (barcode, device_id, production_station_id, scanned_at, user_id, inspected_qty, passed_qty, failed_qty)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                """
+                                
+                device_id = self.get_station_id()[1]               
+                cursor.execute(query, (barcode, device_id, self.get_station_id()[0], datetime.now(), g_model.get_user_id(), inspected_qty, passed_qty, failed_qty))
                 g_model.conn.commit()
                 
         except Exception as e:    

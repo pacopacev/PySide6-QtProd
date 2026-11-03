@@ -337,7 +337,7 @@ class ScanPage(q.QMainWindow):
                 try:
                     with g_model.conn.cursor() as cursor:
                         query = """
-                    DELETE FROM station_scans
+                    DELETE FROM barcode_scans
                     WHERE id = %s """
                 # ПОПРАВКА: Подаваме динамично текущата станция вместо твърдото число 4
                         cursor.execute(query, (self.db_id,))
@@ -371,12 +371,12 @@ class ScanPage(q.QMainWindow):
         try:
             with g_model.conn.cursor() as cursor:
                 query = """
-            select ss.job_order_id, pr.ma_number, COALESCE(pr."name", '-'),jo.price_offer_num,  ss.inspected_qty, ss.passed_qty, ss.failed_qty, usr.first_name
-            FROM station_scans ss
-            LEFT JOIN job_orders jo ON jo.job_order_number = CAST(ss.job_order_id AS TEXT)
+            select bs.barcode, pr.ma_number, COALESCE(pr."name", '-'),jo.price_offer_num,  bs.inspected_qty, bs.passed_qty, bs.failed_qty, usr.first_name
+            FROM barcode_scans bs
+            LEFT JOIN job_orders jo ON jo.job_order_number = bs.barcode
             left join products pr on pr.id = jo.product_id
-            left join users usr on usr.id = ss.user_id
-            WHERE ss.id = %s """
+            left join users usr on usr.id = bs.user_id
+            WHERE bs.id = %s """
                 cursor.execute(query, (self.db_id,))
                 result = cursor.fetchone()
                 if result:
@@ -423,12 +423,12 @@ class ScanPage(q.QMainWindow):
             try:
                 with g_model.conn.cursor() as cursor:
                     query = """
-                select ss.job_order_id, pr.ma_number, COALESCE(pr."name", '-'),jo.price_offer_num,  ss.inspected_qty, ss.passed_qty, ss.failed_qty, usr.first_name
-FROM station_scans ss
-LEFT JOIN job_orders jo ON jo.job_order_number = CAST(ss.job_order_id AS TEXT)
+                select bs.barcode, pr.ma_number, COALESCE(pr."name", '-'),jo.price_offer_num,  bs.inspected_qty, bs.passed_qty, bs.failed_qty, usr.first_name
+FROM barcode_scans bs
+LEFT JOIN job_orders jo ON jo.job_order_number = bs.barcode
 left join products pr on pr.id = jo.product_id
-left join users usr on usr.id = ss.user_id
-WHERE ss.id = %s """
+left join users usr on usr.id = bs.user_id
+WHERE bs.id = %s """
                 # ПОПРАВКА: Подаваме динамично текущата станция вместо твърдото число 4
                     cursor.execute(query, (self.db_id,))
                     cursor.connection.commit()
