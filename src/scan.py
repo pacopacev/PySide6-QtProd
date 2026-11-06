@@ -20,63 +20,49 @@ class Scan(QObject):
         self.data_list = data_list
         self.label = label
         self.computer_name = socket.gethostname()
-       
-       
         self.central_widget = central_widget
-        
         self.inspected_qty = inspected_qty
         self.passed_qty = passed_qty
         self.failed_qty = failed_qty
-        
-        
-        # Пускаме си таймера за часа
+
         self.timer = QTimer(self)
-        
         self.timer.timeout.connect(self.update_time)
-        
 
         self.entry = entry
         self.print_label_button = print_label_button
 
         self.timer.start(1000)
-
         self.update_time()
         self.set_work_station()
-        
-        
 
-        # Use the provided entry if available; otherwise create one parented to the page
+        self.sequence_staions = [6, 1, 2, 3, 4]
+
         if self.entry:
             self.entry.returnPressed.connect(self.barcode_scanned)
             print("Using provided QLineEdit for barcode scanning.")
         else:
             print("No QLineEdit provided. Creating a new one for barcode scanning.")
-            # parent the QLineEdit to the page (a QWidget) instead of this QObject
             self.entry = q.QLineEdit(self.page)
             self.entry.hide()
             self.entry.returnPressed.connect(self.barcode_scanned)
-    
 
     def clear_qty_fields(self):
-            self.inspected_qty.clear()
-            self.passed_qty.clear()
-            self.failed_qty.clear()
-            self.db_id = None  # Reset the db_id when clearing the fields
-    
-    
+        self.inspected_qty.clear()
+        self.passed_qty.clear()
+        self.failed_qty.clear()
+        self.db_id = None
+
     def update_time(self):
         self.time_now = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
         if self.time_label:
             self.time_label.setText(self.time_now)
-            
+
     def set_work_station(self):
         if self.work_station_label:
             self.work_station_label.setText(f"Работна станция: {self.computer_name}")
 
     def get_user_info(self):
-        # Взимаме споделения модел от MainWindow през страницата
         g_model = self.page.stacked_widget.model
-        
         # Взимаме ID-то през ГЕТЪРА
         user_id = g_model.get_user_id()
         print(f"Поискано инфо за станция. Гетърът върна User ID: {user_id}")
@@ -103,7 +89,11 @@ class Scan(QObject):
             g_model.conn.rollback()
             
     def getLastScannedJobOrderID(self):
-        self.station_id = self.get_station_id()[0]
+        station = self.get_station_id()
+        if not station:
+            print("Няма регистрирана производствена станция за този компютър.")
+            return
+        self.station_id = station[0]
         print(self.station_id)
         g_model = self.page.stacked_widget.model
         if g_model.conn is None:
@@ -179,17 +169,20 @@ class Scan(QObject):
                 # ПОПРАВКА: Подаваме динамично текущата станция вместо твърдото число 4
                 cursor.execute(query, (self.computer_name,))
                 result = cursor.fetchone()
-                
-                res = [result[0], self.computer_name]
-                
-                if result:
-                    return res
-                else:
-                    print(f"Няма намерена станция с име {self.computer_name}")
+
+                if result is None:
+                    g_model.conn.commit()
+                    q.QMessageBox.warning(
+                        self.page,
+                        "Няма регистрирана станция",
+                        f"Няма намерена станция с име {self.computer_name}.",
+                    )
+                    return None
+
+                station = [result[0], self.computer_name]
             # ПОПРАВКА: същия риск от "idle in transaction" — затваряме след четенето.
-            # ЗАБЕЛЕЖКА: и двата пътя с `return result[0]` по-горе прескачат този ред,
-            # затова този commit се изпълнява само по пътя "станция не е намерена". Виж бележката под кода.
             g_model.conn.commit()
+            return station
         except Exception as e:
             print(f"Грешка при извличане на станциите: {e}")
             g_model.conn.rollback()
@@ -222,82 +215,140 @@ class Scan(QObject):
             q.QMessageBox.warning(self.page, "Внимание!", "Моля, въведете правилно количество за ОБЩО, OK и NOK.")
             return
 
-        to_record_to_database = True
-
         print("Баркод сканиран")
         raw_barcode = self.entry.text().strip()
         barcode = raw_barcode.removeprefix("#")
         print(f"Сканиран баркод: {barcode}")
 
-        if not barcode.isascii() or not barcode.isdigit():
-            q.QMessageBox.warning(self.page, "Невалиден баркод", "Баркодът трябва да съдържа само цифри и може да започва с #.")
+        if not raw_barcode.startswith("#") or not barcode.isascii() or not barcode.isdigit():
+            q.QMessageBox.warning(self.page, "Невалиден баркод", "Баркодът трябва да започва с # и след него да съдържа само цифри.")
             if self.entry:
                 self.entry.clear()
                 self.entry.setFocus()
             return
-        
-      
-        
-        if barcode:
-            status_barocode = self.checkBArcodeIfExists(barcode)
-            if status_barocode:
-                
-                self.central_widget.setStyleSheet("background-color: #FF0000;")
-                # self.label.setText(f"Баркодът: {barcode} вече е сканиран")
-                self.timer.singleShot(2000, lambda: self.reset_ui())
-                to_record_to_database = False
-                
-            
+
+        if self.checkBArcodeIfExists(barcode):
             self.clear_scan()
-            
-            
-            # print(f"Сканиран е баркод: {barcode}")
-            if to_record_to_database == False:
-                text = f"Баркодът: {barcode} вече е сканиран"
-            else:
-                text = f"Сканиран е баркод: {barcode}"
-            self.label.setText(text)
-            self.label.show()
-            
-            if self.print_label_button:
-                self.print_label_button.setEnabled(True)
-            
-            
-            if to_record_to_database: 
-                self.record_scan_to_db(barcode, inspected_qty, passed_qty, failed_qty)
-            self.timer.singleShot(2000, lambda: self.clear_scan())
-            
+            return
+
+        if not self.checkSequenceStations(barcode):
+            print(f"Баркодът {barcode} не е на правилния етап")
+            # self.central_widget.setStyleSheet("background-color: #FF0000;")
+            # self.label.setText(f"Баркодът: {barcode} не е на правилния етап")
+            # self.label.show()
+            q.QMessageBox.warning(
+                            self.page,
+                            "Внимание!",
+                            f"Грешка при поредността на баркодовете: Баркодът {barcode} не е на правилния етап.",
+                        )
+            self.clear_scan()
+            self.timer.singleShot(2000, lambda: self.reset_ui())
+            return
+
+        self.clear_scan()
+        self.label.setText(f"Сканиран е баркод: {barcode}")
+        self.label.show()
+
+        if self.print_label_button:
+            self.print_label_button.setEnabled(True)
+
+        self.record_scan_to_db(barcode, inspected_qty, passed_qty, failed_qty)
+        self.timer.singleShot(2000, lambda: self.clear_scan())
+    def checkSequenceStations(self, barcode):
+        station = self.get_station_id()
+        if not station:
+            print("Няма регистрирана производствена станция за този компютър.")
+            return False
+        self.station_id = station[0]
+        g_model = self.page.stacked_widget.model
+        if g_model.conn is None or self.station_id not in self.sequence_staions:
+            return False
+        try:
+            with g_model.conn.cursor() as cursor:
+                query = """
+                SELECT production_station_id FROM barcode_scans
+                WHERE barcode = %s
+                ORDER BY scanned_at ASC, id ASC
+                """
+                cursor.execute(query, (barcode,))
+                scanned_stations = [row[0] for row in cursor.fetchall()]
+
+            sequence_length = len(self.sequence_staions)
+            history_is_valid = (
+                len(scanned_stations) < sequence_length
+                and scanned_stations == self.sequence_staions[:len(scanned_stations)]
+            )
+            allowed = (
+                history_is_valid
+                and self.sequence_staions[len(scanned_stations)] == self.station_id
+            )
+            g_model.conn.commit()
+            return allowed
+        except Exception as e:
+            print(f"Грешка при проверка на поредността: {e}")
+            g_model.conn.rollback()
+            q.QMessageBox.warning(
+                self.page,
+                "Грешка при проверка на поредността",
+                f"Грешка при поредността на баркодовете: {e}",
+            )
+            return False
+              
     def checkBArcodeIfExists(self, barcode):
         g_model = self.page.stacked_widget.model
         if g_model.conn is None:
             return
+        station = self.get_station_id()
+        if not station:
+            q.QMessageBox.warning(
+                self.page,
+                "Няма регистрирана станция",
+                "Сканирането е отменено: няма регистрирана производствена станция.",
+            )
+            return
+        self.station_id = station[0]
         try:
             with g_model.conn.cursor() as cursor:
                 query = """
                 SELECT id FROM barcode_scans
-                WHERE barcode = %s
+                WHERE barcode = %s AND production_station_id = %s
                 """
-                cursor.execute(query, barcode,)
+                cursor.execute(query, (barcode, self.station_id))
                 result = cursor.fetchone()
                 
                 if result:
-                    print(f"Баркодът {barcode} вече е сканиран")
                     # ПОПРАВКА: това е точно заявката, която открихме "idle in transaction"
                     # за над 3 часа и блокира ALTER TABLE по-рано. Затваряме я преди да върнем резултат.
                     g_model.conn.commit()
+                    q.QMessageBox.warning(
+                        self.page,
+                        "Повторно сканиране",
+                        f"Баркодът {barcode} вече е сканиран на тази станция.",
+                    )
                     return True
                 else:
                     print(f"Баркодът {barcode} е нов")
                     g_model.conn.commit()
                     return False
-        except Exception as e:    
-            print(f"Грешка при проверка на баркодите: {e}")
+        except Exception as e:
             g_model.conn.rollback()
+            q.QMessageBox.critical(
+                self.page,
+                "Грешка при проверка на баркода",
+                f"Грешка при проверка на баркодите: {e}",
+            )
     def record_scan_to_db(self, barcode, inspected_qty, passed_qty, failed_qty):
         g_model = self.page.stacked_widget.model
         
-        device_id=""
         if g_model.conn is None:
+            return
+        station = self.get_station_id()
+        if not station:
+            q.QMessageBox.warning(
+                self.page,
+                "Няма регистрирана станция",
+                "Сканирането е отменено: няма регистрирана производствена станция.",
+            )
             return
         try:
             with g_model.conn.cursor() as cursor:
@@ -311,14 +362,17 @@ class Scan(QObject):
                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                                 """
                                 
-                device_id = self.get_station_id()[1]               
-                cursor.execute(query, (barcode, device_id, self.get_station_id()[0], datetime.now(), g_model.get_user_id(), inspected_qty, passed_qty, failed_qty))
+                cursor.execute(query, (barcode, station[1], station[0], datetime.now(), g_model.get_user_id(), inspected_qty, passed_qty, failed_qty))
                 g_model.conn.commit()
                 
-        except Exception as e:    
-            print(f"Грешка при записване на сканираните баркoдове: {e}")
+        except Exception as e:
             # ПОПРАВКА: при неуспешен insert, правим rollback вместо да оставим транзакцията отворена.
             g_model.conn.rollback()
+            q.QMessageBox.warning(
+                self.page,
+                "Грешка при записване на баркода",
+                f"Грешка при записване на сканираните баркодове: {e}",
+            )
             return
         self.refresh_data_list()
         self.getLastScannedJobOrderID()

@@ -12,6 +12,7 @@ from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from dash_page import DashPage
 from scan_page import ScanPage
 from add_product_page import AddProductPage
+from listProductPage import ListProductPage
 from global_model import GlobalModel  
 from utils.version import Version
 
@@ -110,7 +111,7 @@ class LoginPage(q.QWidget):
         version_change_tooltip = "Migration to DB."
         
         
-        version = Version(1, 3, 2, version_change_tooltip)  # Примерна версия
+        version = Version(1, 6, 4, version_change_tooltip)  # Примерна версия
         version_label = version.version_label
         version_layout.addStretch()
         version_layout.addWidget(version_label)
@@ -151,6 +152,7 @@ class MainWindow(q.QMainWindow):
         self.product_action.triggered.connect(self.show_add_product_page)
         
         list_products_action = self.product_menu.addAction("List products")
+        list_products_action.triggered.connect(self.show_list_product_page)
         
 
         
@@ -166,11 +168,13 @@ class MainWindow(q.QMainWindow):
         self.dash_page = DashPage(self)     # Индекс 1
         self.scan_page = ScanPage(self)     # Индекс 2
         self.product_page = AddProductPage(self)  # Индекс 3
+        self.list_product_page = ListProductPage(self)
         
         self.pages_container.addWidget(self.login_page)
         self.pages_container.addWidget(self.dash_page)
         self.pages_container.addWidget(self.scan_page)
         self.pages_container.addWidget(self.product_page)
+        self.pages_container.addWidget(self.list_product_page)
         
         # По подразбиране отваряме логин формата
         self.pages_container.setCurrentIndex(0)
@@ -222,6 +226,16 @@ class MainWindow(q.QMainWindow):
         # Превключваме на AddProductPage (Индекс 3)
         if self.pages_container.currentIndex() != 0: # Само ако сме логнати
             self.pages_container.setCurrentIndex(3)
+            
+    def show_add_product_page(self):
+            # Превключваме на AddProductPage (Индекс 3)
+            if self.pages_container.currentIndex() != 0: # Само ако сме логнати
+                self.pages_container.setCurrentIndex(3)
+                
+    def show_list_product_page(self):
+                # Превключваме на AddProductPage (Индекс 3)
+                if self.pages_container.currentIndex() != 0: # Само ако сме логнати
+                    self.pages_container.setCurrentIndex(4)
 
     def go_back_to_login(self):
         # Рестартираме изгледа изцяло
