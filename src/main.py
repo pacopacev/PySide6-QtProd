@@ -227,10 +227,6 @@ class MainWindow(q.QMainWindow):
         if self.pages_container.currentIndex() != 0: # Само ако сме логнати
             self.pages_container.setCurrentIndex(3)
             
-    def show_add_product_page(self):
-            # Превключваме на AddProductPage (Индекс 3)
-            if self.pages_container.currentIndex() != 0: # Само ако сме логнати
-                self.pages_container.setCurrentIndex(3)
                 
     def show_list_product_page(self):
                 # Превключваме на AddProductPage (Индекс 3)
@@ -255,9 +251,8 @@ class MainWindow(q.QMainWindow):
         else:
             event.ignore() 
     
-
-app = q.QApplication([])
-window = MainWindow() 
-window.showMaximized()
-
-app.exec()
+if  __name__ == "__main__":
+    app = q.QApplication(sys.argv)
+    window = MainWindow() 
+    window.showMaximized()
+    sys.exit(app.exec())
