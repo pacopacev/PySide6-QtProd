@@ -3,3 +3,4 @@ psycopg2
 PySide6
 openpyxl
 pywin32
+python-dotenv
