@@ -271,12 +271,10 @@ class MainWindow(q.QMainWindow):
         else:
             event.ignore() 
             
-    
-    
+if  __name__ == "__main__":
+    app = q.QApplication(sys.argv)  
+    app.aboutToQuit.connect(GlobalModel.close_all_connections)
+    window = MainWindow() 
+    window.showMaximized()
+    sys.exit(app.exec())
 
-app = q.QApplication([])
-app.aboutToQuit.connect(GlobalModel.close_all_connections)
-window = MainWindow() 
-window.showMaximized()
-
-app.exec()
