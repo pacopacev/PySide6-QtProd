@@ -2,7 +2,6 @@
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
-# from utils import log, get_connection, safe_int, safe_datetime, safe_str, safe_bool, safe_float
 from global_model import GlobalModel
 
 global_model = GlobalModel()
@@ -28,7 +27,7 @@ def import_full_production_data(excel_file, target_batch_id=None):
         global_model.log(f"Error reading Excel: {e}", "ERROR")
         return [False, e]
     
-    conn = global_model.conn
+    conn = global_model.connect_db()
     if not conn:
         return False
     
@@ -383,4 +382,4 @@ def import_full_production_data(excel_file, target_batch_id=None):
         return [False, e]
     finally:
         cursor.close()
-        conn.close()
+        global_model.close_connection()

@@ -13,6 +13,7 @@ from dash_page import DashPage
 from scan_page import ScanPage
 from add_product_page import AddProductPage
 from listProductPage import ListProductPage
+from register_page import RegisterPage
 from global_model import GlobalModel  
 from utils.version import Version
 
@@ -108,10 +109,10 @@ class LoginPage(q.QWidget):
         layout.addLayout(version_layout)
         
         
-        version_change_tooltip = "Migration to DB."
+        version_change_tooltip = "Make pool conn, UI fix."
         
         
-        version = Version(1, 6, 4, version_change_tooltip)  # Примерна версия
+        version = Version(1, 7, 4, version_change_tooltip)  # Примерна версия
         version_label = version.version_label
         version_layout.addStretch()
         version_layout.addWidget(version_label)
@@ -132,6 +133,15 @@ class MainWindow(q.QMainWindow):
         
         # --- СЪЗДАВАНЕ НА ГОЛЯМОТО МЕНЮ ТУК ---
         self.file_menu = self.menuBar().addMenu("Menu")
+        
+        self.admin_menu = self.file_menu.addMenu("Administrator")
+        
+        # self.admin_menu.menuAction().setVisible(is_admin)
+        register_menu = self.admin_menu.addAction("Register New User")
+        register_menu.triggered.connect(self.show_register_page)
+        
+        
+        
         
         
         go_to_login_action = self.file_menu.addAction("Go to Login Page")
@@ -168,13 +178,15 @@ class MainWindow(q.QMainWindow):
         self.dash_page = DashPage(self)     # Индекс 1
         self.scan_page = ScanPage(self)     # Индекс 2
         self.product_page = AddProductPage(self)  # Индекс 3
-        self.list_product_page = ListProductPage(self)
+        self.list_product_page = ListProductPage(self) # Индекс 4
+        self.register_page = RegisterPage(self) # Индекс 5
         
         self.pages_container.addWidget(self.login_page)
         self.pages_container.addWidget(self.dash_page)
         self.pages_container.addWidget(self.scan_page)
         self.pages_container.addWidget(self.product_page)
         self.pages_container.addWidget(self.list_product_page)
+        self.pages_container.addWidget(self.register_page)
         
         # По подразбиране отваряме логин формата
         self.pages_container.setCurrentIndex(0)
@@ -229,13 +241,17 @@ class MainWindow(q.QMainWindow):
             
     def show_add_product_page(self):
             # Превключваме на AddProductPage (Индекс 3)
-            if self.pages_container.currentIndex() != 0: # Само ако сме логнати
-                self.pages_container.setCurrentIndex(3)
+        if self.pages_container.currentIndex() != 0: # Само ако сме логнати
+            self.pages_container.setCurrentIndex(3)
                 
     def show_list_product_page(self):
                 # Превключваме на AddProductPage (Индекс 3)
-                if self.pages_container.currentIndex() != 0: # Само ако сме логнати
-                    self.pages_container.setCurrentIndex(4)
+        if self.pages_container.currentIndex() != 0: # Само ако сме логнати
+            self.pages_container.setCurrentIndex(4)
+    def show_register_page(self):
+                    # Превключваме на AddProductPage (Индекс 3)
+        if self.pages_container.currentIndex() != 0: # Само ако сме логнати
+            self.pages_container.setCurrentIndex(5)
 
     def go_back_to_login(self):
         # Рестартираме изгледа изцяло
@@ -254,9 +270,12 @@ class MainWindow(q.QMainWindow):
             event.accept() 
         else:
             event.ignore() 
+            
+    
     
 
 app = q.QApplication([])
+app.aboutToQuit.connect(GlobalModel.close_all_connections)
 window = MainWindow() 
 window.showMaximized()
 
