@@ -14,10 +14,10 @@ class RegisterPage(QWidget):
         
         print("in register user")
         
-        self.stacked_widget = stacked_widget
+        # self.stacked_widget = stacked_widget
         
-        self.register_window_layout = QVBoxLayout(stacked_widget)
-        add_user_title_label = QLabel("Add User", self)
-        add_user_title_label.setAlignment(Qt.AlignCenter)
-        add_user_title_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #000000; border: none;")
-        self.register_window_layout.addWidget(add_user_title_label)
+        # self.register_window_layout = QVBoxLayout(stacked_widget)
+        # add_user_title_label = QLabel("Add User", self)
+        # add_user_title_label.setAlignment(Qt.AlignCenter)
+        # add_user_title_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #000000; border: none;")
+        # self.register_window_layout.addWidget(add_user_title_label)
