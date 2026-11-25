@@ -199,14 +199,14 @@ class Scan(QObject):
             self.entry.setFocus()
         if self.label:
             self.label.setText("BARCODE: ИЗЧАКВА СКАНИРАНЕ...")
-            self.label.setStyleSheet("font: Arial; font-size: 30px; font-weight: bold; color: white;")
+            self.label.setStyleSheet("font-family: Arial; font-size: 30px; font-weight: bold; color: white;")
             self.clear_qty_fields()
         if self.print_label_button:
             self.print_label_button.setEnabled(False)
     def reset_ui(self):
         self.central_widget.setStyleSheet("background-color: #0047AB;")
         self.label.setText("BARCODE: ИЗЧАКВА СКАНИРАНЕ...")
-        self.label.setStyleSheet("font: Arial; font-size: 30px; font-weight: bold; color: white;")
+        self.label.setStyleSheet("font-family: Arial; font-size: 30px; font-weight: bold; color: white;")
         self.clear_scan()
     def barcode_scanned(self):
         inspected_qty = self.inspected_qty.text().strip() if self.inspected_qty else ""
@@ -249,7 +249,7 @@ class Scan(QObject):
 
         self.clear_scan()
         self.label.setText(f"Сканиран е баркод: {barcode}")
-        self.label.setStyleSheet("font: Arial; font-size: 30px; font-weight: bold; color: #FFD600;")
+        self.label.setStyleSheet("font-family: Arial; font-size: 30px; font-weight: bold; color: #FFD600;")
         self.label.show()
 
         if self.print_label_button:

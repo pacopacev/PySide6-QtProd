@@ -160,7 +160,7 @@ class ScanPage(q.QMainWindow):
         
         
         self.label = q.QLabel("BARCODE: ИЗЧАКВА СКАНИРАНЕ...", self)
-        self.label.setStyleSheet("font: Arial; font-size: 30px; font-weight: bold; color: white;")
+        self.label.setStyleSheet("font-family: Arial; font-size: 30px; font-weight: bold; color: white;")
         self.label.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(self.label)
         

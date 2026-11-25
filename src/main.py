@@ -6,6 +6,7 @@ import PySide6.QtWidgets as q
 from PySide6.QtWidgets import QStackedWidget
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut
+import psycopg2
 
 
 # Импортиране на външните модули
@@ -199,24 +200,42 @@ class MainWindow(q.QMainWindow):
 
     def login(self, username, password):
         if self.model.conn is None:
-            q.QMessageBox.warning(self, "Connection Error", "Failed to connect to the database.")
+            error = self.model.connection_error or "No additional error details are available."
+            q.QMessageBox.critical(
+                self,
+                "Database Connection Error",
+                "Could not connect to the database.\n\n"
+                f"{error}\n\n"
+                "Check that the .env file is beside flowbit.exe and contains "
+                "DB_HOST, DB_PORT, DB_NAME, DB_USER, and DB_PASSWORD, or set "
+                "these as environment variables.",
+            )
             return
             
         if username and password:
-            with self.model.conn.cursor() as cur: 
-                cur.execute("SELECT * FROM users WHERE first_name = %s AND password = %s", (username, password))
-                data = cur.fetchone()
-                
-                if data:
-                    # print(f"Login successful! User ID: {data[0]}")
-                    self.model.set_user_id(data[0])
-                    # print(f"User ID {self.model.user_id} е записан в GlobalModel")
-                    # Показваме фиксираното меню горе
-                    self.menuBar().setVisible(True)
-                    # Превключваме на DashPage (Индекс 1)
-                    self.pages_container.setCurrentIndex(1)
-                else:
-                    self.show_login_warning()
+            try:
+                with self.model.conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT * FROM users WHERE first_name = %s AND password = %s",
+                        (username, password),
+                    )
+                    data = cur.fetchone()
+                self.model.conn.commit()
+            except psycopg2.Error as error:
+                self.model.conn.rollback()
+                q.QMessageBox.critical(
+                    self,
+                    "Database Error",
+                    f"Login could not be completed: {error}",
+                )
+                return
+
+            if data:
+                self.model.set_user_id(data[0])
+                self.menuBar().setVisible(True)
+                self.pages_container.setCurrentIndex(1)
+            else:
+                self.show_login_warning()
         else:
             self.show_login_warning()
 
@@ -277,4 +296,3 @@ if  __name__ == "__main__":
     window = MainWindow() 
     window.showMaximized()
     sys.exit(app.exec())
-

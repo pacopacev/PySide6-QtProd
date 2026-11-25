@@ -3,10 +3,16 @@ from psycopg2 import pool
 from psycopg2.extensions import TRANSACTION_STATUS_IDLE
 from datetime import datetime
 import os
+import sys
 from threading import Lock
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+if getattr(sys, "frozen", False):
+    env_path = Path(sys.executable).resolve().parent / ".env"
+else:
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+load_dotenv(dotenv_path=env_path)
 
 
 
@@ -19,6 +25,7 @@ class GlobalModel:
     def __init__(self):
         self._user_id = None
         self.conn = None
+        self.connection_error = None
         
         print("GlobalModel initialized")
         self.db_config = {
@@ -58,6 +65,25 @@ class GlobalModel:
 
     def connect_db(self):
         """Borrow a connection from the shared pool."""
+        self.connection_error = None
+        required_settings = {
+            "host": "DB_HOST",
+            "database": "DB_NAME",
+            "user": "DB_USER",
+            "password": "DB_PASSWORD",
+        }
+        missing_settings = [
+            env_name for setting, env_name in required_settings.items()
+            if not self.db_config.get(setting)
+        ]
+        if missing_settings:
+            self.connection_error = (
+                "Missing database settings: "
+                + ", ".join(missing_settings)
+            )
+            self.log(self.connection_error, "ERROR")
+            return None
+
         try:
             db_pool = self._get_pool(self.db_config)
             if self.conn is not None:
@@ -69,9 +95,10 @@ class GlobalModel:
             self.conn = db_pool.getconn()
             return self.conn
         except Exception as e:
+            self.connection_error = str(e)
             self.log(f"Failed to get a database connection: {e}", "ERROR")
             self.conn = None
-            return None 
+            return None
 
     def log(self, message, type="INFO"):
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -178,4 +205,3 @@ class GlobalModel:
         """Destructor to clean up resources when the object is destroyed"""
         self.close_connection()
                    
-
