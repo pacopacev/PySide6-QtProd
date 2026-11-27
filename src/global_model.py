@@ -13,12 +13,13 @@ if getattr(sys, "frozen", False):
 else:
     env_path = Path(__file__).resolve().parents[1] / ".env"
 load_dotenv(dotenv_path=env_path)
+# load_dotenv(override=True)
 
 
 
 class GlobalModel:
     MIN_CONNECTIONS = 1
-    MAX_CONNECTIONS = 5
+    MAX_CONNECTIONS = 3
     _db_pool = None
     _db_pool_lock = Lock()
 
